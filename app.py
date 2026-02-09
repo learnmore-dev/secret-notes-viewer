@@ -1,25 +1,28 @@
-from flask import Flask
-import os
-from azure.identity import ManagedIdentityCredential
+from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
+from flask import Flask
 
 app = Flask(__name__)
 
-# --- SAFE: create clients only ---
-credential = ManagedIdentityCredential(
-    client_id=os.environ.get("AZURE_CLIENT_ID")
-)
+VAULT_URL = "https://kv-secretnotes-au.vault.azure.net/"
+SECRET_NAME = "note-alice"
 
-client = SecretClient(
-    vault_url="https://kv-secretnotes.vault.azure.net/",
-    credential=credential
-)
-
-# --- SAFE: call Key Vault ONLY inside routes ---
 @app.route("/")
-def home():
-    secret = client.get_secret("your-secret-name")
-    return f"Secret value is: {secret.value}"
+def get_secret():
+    try:
+        credential = DefaultAzureCredential()
+
+        client = SecretClient(
+            vault_url=VAULT_URL,
+            credential=credential
+        )
+
+        secret = client.get_secret(SECRET_NAME)
+        return f"Secret value: {secret.value}"
+
+    except Exception as e:
+        return f"Error: {str(e)}", 500
+
 
 if __name__ == "__main__":
     app.run()
